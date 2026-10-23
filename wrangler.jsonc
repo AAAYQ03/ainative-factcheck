@@ -1,0 +1,19 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "ainative-factcheck",
+	"compatibility_date": "2026-10-01",
+	"routes": [{ "pattern": "factcheck.clubmatch.win", "custom_domain": true }],
+	"workers_dev": true,
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "ainative-factcheck"
+		}
+	]
+}
