@@ -12,7 +12,8 @@ export function applyRevisions(text: string, r: CheckResponse, d: Decisions): st
     }
   }
   for (const f of r.compliance) {
-    if (d[f.id] === "accepted" && f.suggestion && out.includes(f.quote)) {
+    // 规则命中给的是改写指引而不是替换文本，只能人工改写
+    if (d[f.id] === "accepted" && f.detector === "llm" && f.suggestion && out.includes(f.quote)) {
       out = out.replace(f.quote, f.suggestion);
     }
   }
@@ -20,7 +21,7 @@ export function applyRevisions(text: string, r: CheckResponse, d: Decisions): st
 }
 
 const STATUS_TEXT = { match: "✅ 一致", mismatch: "❌ 不符", unverifiable: "⚠️ 无法核实" } as const;
-const DECISION_TEXT = { pending: "待处理", accepted: "已采纳", rejected: "已驳回" } as const;
+const DECISION_TEXT = { pending: "待处理", accepted: "已采纳", rejected: "已驳回/已人工处理" } as const;
 const VERDICT_TEXT = {
   pass_pending_signoff: "核查项均一致，待合规负责人签字",
   needs_review: "需人工复核",
@@ -30,7 +31,7 @@ const VERDICT_TEXT = {
 
 export const verdictText = (v: CheckResponse["verdict"]) => VERDICT_TEXT[v];
 
-export function buildReport(text: string, r: CheckResponse, d: Decisions): string {
+export function buildReport(text: string, r: CheckResponse, d: Decisions, finalDraft?: string): string {
   const lines: string[] = [
     `# 投顾稿件核查报告`,
     ``,
@@ -54,6 +55,6 @@ export function buildReport(text: string, r: CheckResponse, d: Decisions): strin
   for (const f of r.compliance) {
     lines.push(`| ${f.id} | ${f.quote} | ${f.category} | ${f.detector === "rule" ? "规则" : "LLM"} | ${f.suggestion} | ${DECISION_TEXT[d[f.id] ?? "pending"]} |`);
   }
-  lines.push(``, `## 修订稿`, ``, applyRevisions(text, r, d), ``, `## 原稿`, ``, text);
+  lines.push(``, `## 修订稿`, ``, finalDraft ?? applyRevisions(text, r, d), ``, `## 原稿`, ``, text);
   return lines.join("\n");
 }

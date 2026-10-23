@@ -130,3 +130,13 @@ describe("合规边界", () => {
     expect(r.verdict_reasons.join()).toContain("签字");
   });
 });
+
+describe("回归：规则命中不自动替换", () => {
+  it("采纳规则命中项不会把改写指引塞进修订稿", async () => {
+    const r = await runCheck(risky, "none", mockFetch({}), NOW);
+    const all = Object.fromEntries(r.compliance.map((f) => [f.id, "accepted" as const]));
+    const revised = applyRevisions(risky, r, all);
+    expect(revised).not.toContain("删除");
+    expect(revised).toContain("稳赚不赔");
+  });
+});

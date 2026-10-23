@@ -40,6 +40,7 @@ export default function Home() {
   const [decisions, setDecisions] = useState<Decisions>({});
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
   const [copied, setCopied] = useState(false);
+  const [draftEdit, setDraftEdit] = useState<string | null>(null);
 
   // localStorage 只能在挂载后读取，否则与服务端渲染结果不一致
   useEffect(() => setStats(loadStats()), []);
@@ -49,6 +50,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     setDecisions({});
+    setDraftEdit(null);
     try {
       const res = await fetch("/api/check", {
         method: "POST",
@@ -73,6 +75,7 @@ export default function Home() {
     const prev = decisions[id] ?? "pending";
     if (prev === d) return;
     setDecisions({ ...decisions, [id]: d });
+    setDraftEdit(null);
     const s: Stats = JSON.parse(JSON.stringify(loadStats() ?? EMPTY_STATS));
     if (prev !== "pending") s[prev][source] = Math.max(0, s[prev][source] - 1);
     if (d !== "pending") s[d][source] += 1;
@@ -82,11 +85,13 @@ export default function Home() {
 
   const revised = useMemo(() => (result ? applyRevisions(checkedText, result, decisions) : ""), [result, checkedText, decisions]);
   const actionable = result ? [...result.claims.filter((c) => c.status !== "match"), ...result.compliance] : [];
+  const finalDraft = draftEdit ?? revised;
+  const ruleFlags = result ? result.compliance.filter((f) => f.detector === "rule").length : 0;
   const pending = actionable.filter((x) => (decisions[x.id] ?? "pending") === "pending").length;
 
   function downloadReport() {
     if (!result) return;
-    const md = buildReport(checkedText, result, decisions);
+    const md = buildReport(checkedText, result, decisions, finalDraft);
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -187,13 +192,15 @@ export default function Home() {
 
           <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-medium">修订稿 <span className="text-xs font-normal text-zinc-500">（只包含你采纳的修改；待处理 {pending} 条）</span></h2>
+              <h2 className="font-medium">修订稿 <span className="text-xs font-normal text-zinc-500">（采纳的修改自动应用，也可直接编辑；待处理 {pending} 条）</span></h2>
               <div className="flex gap-2">
-                <button onClick={() => { navigator.clipboard.writeText(revised); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100">{copied ? "已复制" : "复制修订稿"}</button>
+                <button onClick={() => { navigator.clipboard.writeText(finalDraft); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100">{copied ? "已复制" : "复制修订稿"}</button>
                 <button onClick={downloadReport} className="rounded bg-zinc-900 px-3 py-1 text-xs text-white">下载核查报告 (.md)</button>
               </div>
             </div>
-            <p className="mt-2 whitespace-pre-wrap rounded bg-zinc-50 p-3 text-sm leading-relaxed">{revised}</p>
+            {ruleFlags > 0 && <p className="mt-2 text-xs text-violet-700">有 {ruleFlags} 处规则命中只提供改写指引，请直接在下方修订稿中手动改写。</p>}
+            <textarea value={finalDraft} onChange={(e) => setDraftEdit(e.target.value)} rows={6} className="mt-2 w-full rounded border border-zinc-200 bg-zinc-50 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-zinc-400" />
+            {draftEdit !== null && <p className="mt-1 text-xs text-zinc-500">已手动编辑；再次采纳或驳回会以自动修订结果覆盖手动修改。</p>}
           </section>
 
           <details className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 text-sm">
@@ -275,11 +282,11 @@ function FlagCard({ f, decision, onDecide }: { f: ComplianceFlag; decision: Deci
           <span className={`rounded px-1.5 py-0.5 text-xs ${f.severity === "high" ? "bg-violet-100 text-violet-800" : "bg-zinc-100 text-zinc-700"}`}>{f.category}{f.severity === "low" ? "（建议）" : ""}</span>
           <span className="text-xs text-zinc-500">{f.id} · {f.detector === "rule" ? "规则检出" : "LLM 语义检出"}</span>
         </div>
-        <DecisionButtons decision={decision} onDecide={onDecide} canAccept={!!f.suggestion} />
+        <DecisionButtons decision={decision} onDecide={onDecide} canAccept={f.detector === "llm" && !!f.suggestion} />
       </div>
       <p className="mt-2">“<mark className="bg-violet-100">{f.quote}</mark>”</p>
       {f.reason && <p className="mt-1 text-xs text-zinc-700">{f.reason}</p>}
-      {f.suggestion && <p className="mt-1 text-xs">建议：{f.suggestion}</p>}
+      {f.suggestion && <p className="mt-1 text-xs">{f.detector === "rule" ? "改写指引（需在修订稿中手动改写）：" : "建议改写为："}{f.suggestion}</p>}
     </div>
   );
 }

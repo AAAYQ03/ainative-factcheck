@@ -182,11 +182,13 @@ async function fetchActual(ctx: VerifyCtx, c: Claim): Promise<Fetched> {
   };
 }
 
+const VALUATION = new Set<Metric>(["pe_ttm", "pe_mrq", "pb_mrq", "ps_ttm"]);
+
 // 容差：[精确表述, 模糊表述]
 function tolerance(m: Metric): { kind: "abs" | "rel"; v: [number, number] } {
   if (m.endsWith("_pct")) return { kind: "abs", v: [0.1, 1.0] };
   if (m === "last_price") return { kind: "rel", v: [0.005, 0.02] };
-  if (m.startsWith("p")) return { kind: "rel", v: [0.03, 0.08] }; // 估值随股价每日变化
+  if (VALUATION.has(m)) return { kind: "rel", v: [0.03, 0.08] }; // 估值随股价每日变化
   return { kind: "rel", v: [0.01, 0.03] };
 }
 

@@ -78,3 +78,11 @@ describe("LLM 合规结果过滤", () => {
     expect(r.map((f) => f.quote)).toEqual(["未来三年业绩翻倍是大概率事件"]);
   });
 });
+
+describe("回归：验收中发现的问题", () => {
+  it("归母净利润按金额容差（1%/3%），不按估值容差", () => {
+    expect(compare("parent_net_profit", 740, 722.01, false).match).toBe(false); // 差 2.5%
+    expect(compare("parent_net_profit", 550, 507.45, true).match).toBe(false);
+    expect(compare("pe_ttm", 20, 20.24, false).match).toBe(true);
+  });
+});
