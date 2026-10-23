@@ -8,6 +8,7 @@
 每条结论都附**数据源接口、字段、原值、时点、单位和计算口径**。用户逐条"采纳/驳回"后生成修订稿，并可导出可审计的核查报告。
 
 - **线上地址：https://factcheck.clubmatch.win** （Cloudflare Workers + 自定义域名，国内可直接访问；备用地址 https://ainative-factcheck.q16637106928.workers.dev）
+- 源代码：https://github.com/AAAYQ03/ainative-factcheck
 - 赛题：题目 14，开放命题 · AI Native 投资产品创新（投资内容生产 / 质量治理）
 
 ---
